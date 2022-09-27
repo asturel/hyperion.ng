@@ -2,15 +2,17 @@
 
 // qt
 #include <QTcpSocket>
+#include <QLocalSocket>
 #include <QHostAddress>
 #include <QTimer>
 #include <QRgb>
 
-FlatBufferClient::FlatBufferClient(QTcpSocket* socket, int timeout, QObject *parent)
+FlatBufferClient::FlatBufferClient(QTcpSocket* socket, QLocalSocket* domain, int timeout, QObject *parent)
 	: QObject(parent)
 	, _log(Logger::getInstance("FLATBUFSERVER"))
 	, _socket(socket)
-	, _clientAddress("@"+socket->peerAddress().toString())
+	, _domain(domain)
+	, _clientAddress(_socket != nullptr ? _socket->peerAddress().toString() : "@LocalSocket")
 	, _timeoutTimer(new QTimer(this))
 	, _timeout(timeout * 1000)
 	, _priority()
@@ -21,15 +23,26 @@ FlatBufferClient::FlatBufferClient(QTcpSocket* socket, int timeout, QObject *par
 	connect(_timeoutTimer, &QTimer::timeout, this, &FlatBufferClient::forceClose);
 
 	// connect socket signals
-	connect(_socket, &QTcpSocket::readyRead, this, &FlatBufferClient::readyRead);
-	connect(_socket, &QTcpSocket::disconnected, this, &FlatBufferClient::disconnected);
+	if (_socket != nullptr)
+	{
+		connect(_socket, &QTcpSocket::readyRead, this, &FlatBufferClient::readyRead);
+		connect(_socket, &QTcpSocket::disconnected, this, &FlatBufferClient::disconnected);
+	}
+	if (_domain != nullptr)
+	{
+		connect(_domain, &QLocalSocket::readyRead, this, &FlatBufferClient::readyRead);
+		connect(_domain, &QLocalSocket::disconnected, this, &FlatBufferClient::disconnected);
+	}
 }
 
 void FlatBufferClient::readyRead()
 {
 	_timeoutTimer->start();
 
-	_receiveBuffer += _socket->readAll();
+	if (_socket != nullptr)
+		_receiveBuffer += _socket->readAll();
+	else if (_domain != nullptr)
+		_receiveBuffer += _domain->readAll();
 
 	// check if we can read a header
 	while(_receiveBuffer.size() >= 4)
@@ -62,13 +75,21 @@ void FlatBufferClient::readyRead()
 
 void FlatBufferClient::forceClose()
 {
-	_socket->close();
+	if (_socket != nullptr)
+		_socket->close();
+	if (_domain != nullptr)
+		_domain->close();
 }
 
 void FlatBufferClient::disconnected()
 {
 	Debug(_log, "Socket Closed");
-	_socket->deleteLater();
+
+	if (_socket != nullptr)
+		_socket->deleteLater();
+	if (_domain != nullptr)
+		_domain->deleteLater();
+
 	if (_priority != 0 && _priority >= 100 && _priority < 200)
 		emit clearGlobalInput(_priority);
 
@@ -215,9 +236,19 @@ void FlatBufferClient::sendMessage()
 	auto size = _builder.GetSize();
 	const uint8_t* buffer = _builder.GetBufferPointer();
 	uint8_t sizeData[] = {uint8_t(size >> 24), uint8_t(size >> 16), uint8_t(size >> 8), uint8_t(size)};
-	_socket->write((const char *) sizeData, sizeof(sizeData));
-	_socket->write((const char *)buffer, size);
-	_socket->flush();
+
+	if (_socket != nullptr)
+	{
+		_socket->write((const char*)sizeData, sizeof(sizeData));
+		_socket->write((const char*)buffer, size);
+		_socket->flush();
+	}
+	else if (_domain != nullptr)
+	{
+		_domain->write((const char*)sizeData, sizeof(sizeData));
+		_domain->write((const char*)buffer, size);
+		_domain->flush();
+	}
 }
 
 void FlatBufferClient::sendSuccessReply()
