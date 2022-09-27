@@ -5,6 +5,7 @@
 #include <QColor>
 #include <QImage>
 #include <QTcpSocket>
+#include <QLocalSocket>
 #include <QTimer>
 #include <QMap>
 #include <QHostAddress>
@@ -18,6 +19,9 @@
 #include <flatbuffers/flatbuffers.h>
 
 const int FLATBUFFER_DEFAULT_PORT = 19400;
+
+#define HYPERION_DOMAIN_SERVER QStringLiteral("hyperion-domain")
+
 
 namespace hyperionnet
 {
@@ -117,7 +121,9 @@ private:
 
 private:
 	/// The TCP-Socket with the connection to the server
-	QTcpSocket _socket;
+	QTcpSocket* _socket;
+
+	QLocalSocket*	_domain;
 
 	QString _origin;
 	int _priority;
@@ -133,6 +139,7 @@ private:
 
 	QTimer _timer;
 	QAbstractSocket::SocketState  _prevSocketState;
+	QLocalSocket::LocalSocketState	_prevLocalState;
 
 	Logger * _log;
 	flatbuffers::FlatBufferBuilder _builder;
