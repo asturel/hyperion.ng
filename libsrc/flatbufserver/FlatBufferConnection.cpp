@@ -12,20 +12,32 @@
 #include "hyperion_request_generated.h"
 
 FlatBufferConnection::FlatBufferConnection(const QString& origin, const QString& host, int priority, bool skipReply, quint16 port)
-	: _socket()
+	: _socket((host == HYPERION_DOMAIN_SERVER) ? nullptr : new QTcpSocket())
+	, _domain((host == HYPERION_DOMAIN_SERVER) ? new QLocalSocket() : nullptr)
 	, _origin(origin)
 	, _priority(priority)
 	, _host(host)
 	, _port(port)
 	, _prevSocketState(QAbstractSocket::UnconnectedState)
+	, _prevLocalState(QLocalSocket::UnconnectedState)
 	, _log(Logger::getInstance("FLATBUFCONN"))
 	, _registered(false)
 {
-	if(!skipReply)
-		connect(&_socket, &QTcpSocket::readyRead, this, &FlatBufferConnection::readData, Qt::UniqueConnection);
+	if (!skipReply)
+	{
+		if (_socket != nullptr)
+			connect(_socket, &QTcpSocket::readyRead, this, &FlatBufferConnection::readData, Qt::UniqueConnection);
+		else if (_domain != nullptr)
+			connect(_domain, &QLocalSocket::readyRead, this, &FlatBufferConnection::readData, Qt::UniqueConnection);
+	}
 
 	// init connect
-	Info(_log, "Connecting to Hyperion: %s:%u", QSTRING_CSTR(_host), _port);
+	if (_socket != nullptr)
+		Info(_log, "Connecting to Hyperion: %s:%u", QSTRING_CSTR(_host), _port);
+
+	if (_domain != nullptr)
+		Info(_log, "Connecting to Hyperion local domain: %s.", QSTRING_CSTR(_host));
+
 	connectToHost();
 
 	// start the connection timer
@@ -39,12 +51,19 @@ FlatBufferConnection::~FlatBufferConnection()
 {
 	Debug(_log, "Closing connection to: %s:%u", QSTRING_CSTR(_host), _port);
 	_timer.stop();
-	_socket.close();
+
+	if (_socket != nullptr)
+		_socket->close();
+	if (_domain != nullptr)
+		_domain->close();
 }
 
 void FlatBufferConnection::readData()
 {
-	_receiveBuffer += _socket.readAll();
+	if (_socket != nullptr)
+		_receiveBuffer += _socket->readAll();
+	else if (_domain != nullptr)
+		_receiveBuffer += _domain->readAll();
 
 	// check if we can read a header
 	while(_receiveBuffer.size() >= 4)
@@ -76,10 +95,20 @@ void FlatBufferConnection::readData()
 
 void FlatBufferConnection::setSkipReply(bool skip)
 {
-	if(skip)
-		disconnect(&_socket, &QTcpSocket::readyRead, 0, 0);
-	else
-		connect(&_socket, &QTcpSocket::readyRead, this, &FlatBufferConnection::readData, Qt::UniqueConnection);
+	if (_socket != nullptr)
+	{
+		if (skip)
+			disconnect(_socket, &QTcpSocket::readyRead, 0, 0);
+		else
+			connect(_socket, &QTcpSocket::readyRead, this, &FlatBufferConnection::readData, Qt::UniqueConnection);
+	}
+	if (_domain != nullptr)
+	{
+		if (skip)
+			disconnect(_domain, &QLocalSocket::readyRead, 0, 0);
+		else
+			connect(_domain, &QLocalSocket::readyRead, this, &FlatBufferConnection::readData, Qt::UniqueConnection);
+	}
 }
 
 void FlatBufferConnection::setRegister(const QString& origin, int priority)
@@ -97,9 +126,18 @@ void FlatBufferConnection::setRegister(const QString& origin, int priority)
 
 	// write message
 	int count = 0;
-	count += _socket.write(reinterpret_cast<const char *>(header), 4);
-	count += _socket.write(reinterpret_cast<const char *>(_builder.GetBufferPointer()), size);
-	_socket.flush();
+	if (_socket != nullptr)
+	{
+		count += _socket->write(reinterpret_cast<const char*>(header), 4);
+		count += _socket->write(reinterpret_cast<const char*>(_builder.GetBufferPointer()), size);
+		_socket->flush();
+	}
+	else if (_domain != nullptr)
+	{
+		count += _domain->write(reinterpret_cast<const char*>(header), 4);
+		count += _domain->write(reinterpret_cast<const char*>(_builder.GetBufferPointer()), size);
+		_domain->flush();
+	}
 	_builder.Clear();
 }
 
@@ -115,6 +153,12 @@ void FlatBufferConnection::setColor(const ColorRgb & color, int priority, int du
 
 void FlatBufferConnection::setImage(const Image<ColorRgb> &image)
 {
+	if (_socket != nullptr && _socket->state() != QAbstractSocket::ConnectedState)
+		return;
+
+	if (_domain != nullptr && _domain->state() != QLocalSocket::ConnectedState)
+		return;
+
 	auto imgData = _builder.CreateVector(reinterpret_cast<const uint8_t*>(image.memptr()), image.size());
 	auto rawImg = hyperionnet::CreateRawImage(_builder, imgData, image.width(), image.height());
 	auto imageReq = hyperionnet::CreateImage(_builder, hyperionnet::ImageType_RawImage, rawImg.Union(), -1);
@@ -143,17 +187,19 @@ void FlatBufferConnection::clearAll()
 void FlatBufferConnection::connectToHost()
 {
 	// try connection only when
-	if (_socket.state() == QAbstractSocket::UnconnectedState)
-	   _socket.connectToHost(_host, _port);
+	if (_socket != nullptr && _socket->state() == QAbstractSocket::UnconnectedState)
+		_socket->connectToHost(_host, _port);
+	else if (_domain != nullptr && _domain->state() == QLocalSocket::UnconnectedState)
+		_domain->connectToServer(_host);
 }
 
 void FlatBufferConnection::sendMessage(const uint8_t* buffer, uint32_t size)
 {
 	// print out connection message only when state is changed
-	if (_socket.state() != _prevSocketState )
+	if (_socket != nullptr && _socket->state() != _prevSocketState)
 	{
 		_registered = false;
-		switch (_socket.state() )
+		switch (_socket->state() )
 		{
 			case QAbstractSocket::UnconnectedState:
 				Info(_log, "No connection to Hyperion: %s:%u", QSTRING_CSTR(_host), _port);
@@ -165,11 +211,32 @@ void FlatBufferConnection::sendMessage(const uint8_t* buffer, uint32_t size)
 				Debug(_log, "Connecting to Hyperion: %s:%u", QSTRING_CSTR(_host), _port);
 				break;
 	  }
-	  _prevSocketState = _socket.state();
+	  _prevSocketState = _socket->state();
 	}
 
 
-	if (_socket.state() != QAbstractSocket::ConnectedState)
+	if (_socket != nullptr && _socket->state() != QAbstractSocket::ConnectedState)
+		return;
+
+
+	if (_domain != nullptr && _domain->state() != _prevLocalState)
+	{
+		_registered = false;
+		switch (_domain->state())
+		{
+		case QLocalSocket::UnconnectedState:
+			Info(_log, "No connection to Hyperion domain: %s", _host.toStdString().c_str());
+			break;
+		case QLocalSocket::ConnectedState:
+			Info(_log, "Connected to Hyperion domain: %s", _host.toStdString().c_str());
+			break;
+		default:
+			Debug(_log, "Connecting to Hyperion domain: %s", _host.toStdString().c_str());
+			break;
+		}
+		_prevLocalState = _domain->state();
+	}
+	if (_domain != nullptr && _domain->state() != QLocalSocket::ConnectedState)
 		return;
 
 	if(!_registered)
@@ -186,9 +253,18 @@ void FlatBufferConnection::sendMessage(const uint8_t* buffer, uint32_t size)
 
 	// write message
 	int count = 0;
-	count += _socket.write(reinterpret_cast<const char *>(header), 4);
-	count += _socket.write(reinterpret_cast<const char *>(buffer), size);
-	_socket.flush();
+	if (_socket != nullptr)
+	{
+		count += _socket->write(reinterpret_cast<const char*>(header), 4);
+		count += _socket->write(reinterpret_cast<const char*>(buffer), size);
+		_socket->flush();
+	}
+	else if (_domain != nullptr)
+	{
+		count += _domain->write(reinterpret_cast<const char*>(header), 4);
+		count += _domain->write(reinterpret_cast<const char*>(buffer), size);
+		_domain->flush();
+	}
 }
 
 bool FlatBufferConnection::parseReply(const hyperionnet::Reply *reply)
