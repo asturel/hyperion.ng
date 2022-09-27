@@ -8,9 +8,11 @@
 #include <QVector>
 
 class QTcpServer;
+class QLocalServer;
 class FlatBufferClient;
 class NetOrigin;
 
+#define HYPERION_DOMAIN_SERVER QStringLiteral("hyperion-domain")
 
 ///
 /// @brief A TcpServer to receive images of different formats with Google Flatbuffer
@@ -62,9 +64,12 @@ private:
 	///
 	void stopServer();
 
+	void setupClient(FlatBufferClient* client);
+
 
 private:
 	QTcpServer* _server;
+	QLocalServer*	_domain;
 	NetOrigin* _netOrigin;
 	Logger* _log;
 	int _timeout;
