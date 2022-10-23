@@ -32,7 +32,7 @@ public:
 	/// Following parameters are required
 	/// @code
 	/// {
-	///     "deviceConfig"  : 
+	///     "deviceConfig"  :
 	/// }
 	///@endcode
 	///
@@ -131,6 +131,8 @@ private:
 	/// @return True,if on success
 	///
 	bool tryOpen(int delayAfterConnect_ms);
+
+	void readyRead();
 
 	/// Try to auto-discover device name?
 	bool _isAutoDeviceName;

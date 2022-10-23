@@ -8,6 +8,7 @@
 #include <QSerialPortInfo>
 #include <QEventLoop>
 #include <QDir>
+#include <QByteArray>
 
 #include <chrono>
 
@@ -123,6 +124,11 @@ bool ProviderRs232::powerOff()
 	}
 	return rc;
 }
+void ProviderRs232::readyRead()
+{
+    QByteArray data = _rs232Port.readAll();
+	Debug(_log, "[%s] serial output: %s", QSTRING_CSTR(_deviceName), data.constData());
+}
 
 bool ProviderRs232::tryOpen(int delayAfterConnect_ms)
 {
@@ -177,6 +183,7 @@ bool ProviderRs232::tryOpen(int delayAfterConnect_ms)
 				this->setInError(_rs232Port.errorString());
 				return false;
 			}
+			QObject::connect(&_rs232Port, &QSerialPort::readyRead, this, &ProviderRs232::readyRead);
 		}
 		else
 		{
