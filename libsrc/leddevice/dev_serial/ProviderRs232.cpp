@@ -9,6 +9,7 @@
 #include <QEventLoop>
 #include <QDir>
 #include <QByteArray>
+#include <QString>
 
 #include <chrono>
 
@@ -35,7 +36,9 @@ ProviderRs232::ProviderRs232(const QJsonObject &deviceConfig)
 	  ,_isAutoDeviceName(false)
 	  ,_delayAfterConnect_ms(0)
 	  ,_frameDropCounter(0)
+	  , _receiveBuffer()
 {
+	QObject::connect(&_rs232Port, &QSerialPort::readyRead, this, &ProviderRs232::readyRead);
 }
 
 bool ProviderRs232::init(const QJsonObject &deviceConfig)
@@ -126,8 +129,57 @@ bool ProviderRs232::powerOff()
 }
 void ProviderRs232::readyRead()
 {
-    QByteArray data = _rs232Port.readAll();
-	Debug(_log, "[%s] serial output: %s", QSTRING_CSTR(_deviceName), data.constData());
+    //QByteArray data = _rs232Port.readAll();
+	//Debug(_log, "[%s] serial output: %s", QSTRING_CSTR(_deviceName), data.constData());
+	_receiveBuffer.append(_rs232Port.readAll());
+
+	int bytes = _receiveBuffer.indexOf('\n') + 1;
+	while (bytes > 0)
+	{
+		// create message string (strip the newline)
+		const QString message = readMessage(_receiveBuffer.data(), bytes);
+
+		// handle trimmed message
+		Debug(_log, "[%s] Serial output: %s", QSTRING_CSTR(_deviceName), QSTRING_CSTR(message));
+
+		// remove message data from buffer
+		_receiveBuffer.remove(0, bytes);
+
+		// drop messages if the buffer is too full
+		if (_receiveBuffer.size() > 100 * 1024)
+		{
+			Debug(_log, "server drops messages (buffer full)");
+			_receiveBuffer.clear();
+		}
+
+		// try too look up '\n' again
+		bytes = _receiveBuffer.indexOf('\n') + 1;
+	}
+}
+
+QString ProviderRs232::readMessage(const char* data, const size_t size) const
+{
+	char* end = (char*)data + size - 1;
+
+	// Trim left
+	while (data < end && std::isspace(*data))
+	{
+		++data;
+	}
+
+	// Trim right
+	while (end > data && std::isspace(*end))
+	{
+		--end;
+	}
+
+	// create message string (strip the newline)
+	const int len = end - data + 1;
+	const QString message = QString::fromLatin1(data, len);
+
+	//std::cout << bytes << ": \"" << message.toUtf8().constData() << "\"" << std::endl;
+
+	return message;
 }
 
 bool ProviderRs232::tryOpen(int delayAfterConnect_ms)
@@ -183,7 +235,6 @@ bool ProviderRs232::tryOpen(int delayAfterConnect_ms)
 				this->setInError(_rs232Port.errorString());
 				return false;
 			}
-			QObject::connect(&_rs232Port, &QSerialPort::readyRead, this, &ProviderRs232::readyRead);
 		}
 		else
 		{
