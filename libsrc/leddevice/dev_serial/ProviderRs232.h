@@ -6,7 +6,6 @@
 
 // qt includes
 #include <QSerialPort>
-#include <QByteArray>
 
 ///
 /// The ProviderRs232 implements an abstract base-class for LedDevices using a RS232-device.
@@ -124,7 +123,9 @@ protected slots:
 	///
 	void setInError( const QString& errorMsg) override;
 
-	void readyRead();
+private slots:
+
+	void handleReadyRead();
 
 private:
 
@@ -135,8 +136,6 @@ private:
 	///
 	bool tryOpen(int delayAfterConnect_ms);
 
-	QString readMessage(const char *data, const size_t size) const;
-
 	/// Try to auto-discover device name?
 	bool _isAutoDeviceName;
 
@@ -145,8 +144,6 @@ private:
 
 	/// Frames dropped, as write failed
 	int _frameDropCounter;
-
-	QByteArray _receiveBuffer;
 };
 
 #endif // PROVIDERRS232_H
