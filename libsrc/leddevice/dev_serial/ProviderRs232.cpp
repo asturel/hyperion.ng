@@ -262,7 +262,6 @@ int ProviderRs232::writeBytes(const qint64 size, const uint8_t *data)
 				rc = -1;
 			}
 		}
-		_rs232Port.flush();
 	}
 	return rc;
 }
