@@ -108,9 +108,11 @@ jobs:
 
       - name: Build cross (webos arm)
         env:
-          CCACHE_DIR: ${{ github.workspace }}/${{ env.CCACHE_DIR_CROSS }}
+          CCACHE_DIR: ${{ github.workspace }}/${{ env.CCACHE_DIR_CROSS }}   
         run: |
           pushd ./${{ env.BUILD_DIR_CROSS }}
+          CFLAGS="-mcpu=cortex-a9 -mfloat-abi=softfp -mfpu=neon-fp16" \
+          CXXFLAGS="-mcpu=cortex-a9 -mfloat-abi=softfp -mfpu=neon-fp16" \
           cmake .. \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \

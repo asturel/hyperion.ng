@@ -175,6 +175,15 @@ if ( "${PLATFORM}" MATCHES "osx" )
 	SET ( DEFAULT_OSX        ON )
 	SET ( DEFAULT_DEV_USB_HID    ON )
 elseif ( "${PLATFORM}" MATCHES "rpi" )
+
+	set(_cflags_list "")
+	list(APPEND _cflags_list
+		-mcpu=cortex-a9 -mfloat-abi=softfp -mfpu=neon-fp16
+	)
+	list(JOIN _cflags_list " " COMMON_FLAGS)
+	add_compile_options(${_cflags_list})
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${_cflags_list}")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${_cflags_list}")
 	SET ( DEFAULT_DISPMANX   ON )
 	SET ( DEFAULT_DEV_WS281XPWM  ON )
 elseif ( "${PLATFORM}" STREQUAL "amlogic" )
