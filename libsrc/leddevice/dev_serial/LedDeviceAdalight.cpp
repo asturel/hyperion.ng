@@ -207,10 +207,12 @@ void LedDeviceAdalight::readFeedback()
 					continuousLines = false;
 				}
 				std::cout << record.trimmed().toStdString() << std::endl;
+				Error(_log, "Serial error: %s", record.trimmed().constData());
 			}
 			else
 			{
 				std::cout << record.toStdString() << std::flush;
+				Debug(_log, "Serial: %s", record.trimmed().constData());
 				continuousLines = true;
 			}
 		}
