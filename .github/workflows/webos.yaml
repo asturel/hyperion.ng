@@ -28,8 +28,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          repository: asturel/hyperion.ng
-          ref: dev2
           path: hyperion.ng
           submodules: recursive
           fetch-depth: 0
