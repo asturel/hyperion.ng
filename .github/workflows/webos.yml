@@ -1,0 +1,164 @@
+name: WebOS build
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  TOOLCHAIN_URL: https://github.com/openlgtv/buildroot-nc4/releases/latest/download/arm-webos-linux-gnueabi_sdk-buildroot.tar.gz
+  TOOLCHAIN_DIR: /opt/arm-webos-linux-gnueabi_sdk-buildroot
+  TOOLCHAIN_ENV_FILE: /opt/arm-webos-linux-gnueabi_sdk-buildroot/environment-setup
+  TOOLCHAIN_FILE: /opt/arm-webos-linux-gnueabi_sdk-buildroot/share/buildroot/toolchainfile.cmake
+  BUILD_DIR_NATIVE: build-x86x64
+  BUILD_DIR_CROSS: build-cross
+
+  CCACHE_DIR_NATIVE: .ccache-build-x86x64
+  CCACHE_DIR_CROSS: .ccache-build-cross
+  CCACHE_COMPRESS: true
+  CCACHE_COMPRESSLEVEL: 6
+  CCACHE_MAXSIZE: 600M
+
+jobs:
+  build_hyperion_ng:
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: ./hyperion.ng
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          path: hyperion.ng
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Restore/Cache build directories
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ github.workspace }}/${{ env.CCACHE_DIR_NATIVE }}
+            ${{ github.workspace }}/${{ env.CCACHE_DIR_CROSS }}
+
+          key: ccache-${{ runner.os }}-${{github.run_id}}
+          restore-keys: |
+            ccache-${{ runner.os }}
+
+      - name: Create build directories
+        run: |
+          mkdir -p ./${{ env.BUILD_DIR_NATIVE }}
+          mkdir -p ./${{ env.BUILD_DIR_CROSS }}
+
+      - name: Download and unpack toolchain
+        working-directory: /opt
+        run: |
+          wget -q -O toolchain.tar.gz ${TOOLCHAIN_URL}
+          tar xf toolchain.tar.gz
+
+      - name: Relocate toolchain
+        run: |
+          pushd ${TOOLCHAIN_DIR}
+          ./relocate-sdk.sh
+          popd
+
+      - name: Fix toolchain (remove perl)
+        run: |
+          find ${TOOLCHAIN_DIR}/bin -type f -iname "perl*" -delete
+
+      - name: Install native dependencies
+        env:
+          apt_deps: ccache git cmake build-essential qtbase5-dev libqt5serialport5-dev libqt5sql5-sqlite libqt5svg5-dev libqt5x11extras5-dev python3-dev libxcb-image0-dev libxcb-util0-dev libxcb-shm0-dev libxcb-render0-dev libxcb-randr0-dev libxrandr-dev libxrender-dev libturbojpeg0-dev libssl-dev libmbedtls-dev
+        run: |
+          sudo apt update
+          sudo apt install -y ${{ env.apt_deps }}
+
+      - name: Build native
+        env:
+          CCACHE_DIR: ${{ github.workspace }}/${{ env.CCACHE_DIR_NATIVE }}
+        run: |
+          pushd ./${{ env.BUILD_DIR_NATIVE }}
+          cmake .. \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DENABLE_FLATBUF_SERVER=OFF \
+            -DENABLE_DISPMANX=OFF \
+            -DENABLE_FB=OFF \
+            -DENABLE_V4L2=OFF \
+            -DENABLE_X11=OFF \
+            -DENABLE_XCB=OFF \
+            -DENABLE_BOBLIGHT_SERVER=OFF \
+            -DENABLE_CEC=OFF \
+            -DENABLE_DEV_NETWORK=OFF \
+            -DENABLE_DEV_SERIAL=OFF \
+            -DENABLE_DEV_TINKERFORGE=OFF \
+            -DENABLE_DEV_USB_HID=OFF \
+            -DENABLE_AUDIO=OFF \
+            -DENABLE_EFFECTENGINE=OFF \
+            -DENABLE_REMOTE_CTL=OFF \
+            -DENABLE_QT=OFF \
+            -DENABLE_FORWARDER=OFF \
+            -DENABLE_DEV_SPI=OFF \
+            -DENABLE_MDNS=OFF \
+            -DENABLE_FLATBUF_CONNECT=ON \
+            -DENABLE_PROTOBUF_SERVER=OFF \
+            -Wno-dev
+          make
+          popd
+
+      - name: Build cross (webos arm)
+        env:
+          CCACHE_DIR: ${{ github.workspace }}/${{ env.CCACHE_DIR_CROSS }}
+        run: |
+          pushd ./${{ env.BUILD_DIR_CROSS }}
+          cmake .. \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE} \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DPLATFORM=rpi \
+            -DHYPERION_LIGHT=ON \
+            -DENABLE_AUDIO=OFF \
+            -DENABLE_QT=OFF \
+            -DENABLE_EFFECTENGINE=ON \
+            -DENABLE_JSONCHECKS=ON \
+            -DENABLE_DEV_SERIAL=ON \
+            -DENABLE_DEV_USB_HID=ON \
+            -DENABLE_DEV_WS281XPWM=OFF \
+            -DENABLE_DEV_TINKERFORGE=ON \
+            -DENABLE_MDNS=ON \
+            -DENABLE_DEPLOY_DEPENDENCIES=OFF \
+            -DENABLE_BOBLIGHT_SERVER=ON \
+            -DENABLE_FLATBUF_SERVER=ON \
+            -DENABLE_PROTOBUF_SERVER=OFF \
+            -DENABLE_FORWARDER=ON \
+            -DENABLE_FLATBUF_CONNECT=ON \
+            -DIMPORT_FLATC=${GITHUB_WORKSPACE}/hyperion.ng/${BUILD_DIR_NATIVE}/flatc_export.cmake
+          make
+          popd
+
+      - name: Copy built binaries to release/
+        run: |
+          mkdir ./release
+          cp -r ./${{ env.BUILD_DIR_CROSS }}/bin/* ./release/
+          find ./release
+
+      - name: Copy dependencies to release/
+        env:
+          dependency_libs: libpython3.10.so.1.0 libpython3.so libpng16.so.16 libjpeg.so.8 libcrypto.so.1.1 libz.so.1 libssl.so.1.1 libQt5Sql.so.5.15.2 libpcre2-16.so.0 libQt5Gui.so.5 libQt5Network.so.5 libQt5Widgets.so.5 libk5crypto.so.3 libatomic.so.1 libQt5Core.so.5 libkrb5support.so.0 libcom_err.so.3 libstdc++.so.6 libkrb5.so.3 libQt5Sql.so.5 libgssapi_krb5.so.2 libQt5SerialPort.so.5 libQt5Sql.so.5.15 libusb-1.0.so.0
+        run: |
+          for i in ${{ env.dependency_libs }}; do find ${TOOLCHAIN_DIR}/arm-webos-linux-gnueabi/sysroot/ -name $i -exec cp {} ./release/ \;; done
+          mkdir -p ./release/sqldrivers
+          mkdir -p ./release/imageformats
+          mkdir -p ./release/python/lib
+          cp ${TOOLCHAIN_DIR}/arm-webos-linux-gnueabi/sysroot/usr/lib/qt/plugins/sqldrivers/libqsqlite.so ./release/sqldrivers/
+          cp ${TOOLCHAIN_DIR}/arm-webos-linux-gnueabi/sysroot/usr/lib/qt/plugins/imageformats/libqico.so ./release/imageformats/
+          cp ${TOOLCHAIN_DIR}/arm-webos-linux-gnueabi/sysroot/usr/lib/qt/plugins/imageformats/libqjpeg.so ./release/imageformats/
+          cp -r ${TOOLCHAIN_DIR}/arm-webos-linux-gnueabi/sysroot/usr/lib/python3.10 ./release/python/lib/
+          find ./release
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: hyperion.ng-build
+          path: ${{ github.workspace }}/hyperion.ng/release/*
+          if-no-files-found: error
