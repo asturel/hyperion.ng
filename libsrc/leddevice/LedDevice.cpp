@@ -311,7 +311,7 @@ int LedDevice::updateLeds(std::vector<ColorRgb> ledValues)
 		if (_latchTime_ms == 0 || elapsedTimeMs >= _latchTime_ms)
 		{
 			//std::cout << "LedDevice::updateLeds(), Elapsed time since last write (" << elapsedTimeMs << ") ms > _latchTime_ms (" << _latchTime_ms << ") ms" << std::endl;
-			//Debug(_log, "LedDevice::updateLeds(), Elapsed time since last write (%d) ms > _latchTime_ms (%d) ms", elapsedTimeMs, _latchTime_ms);
+			//Debug(_log, "LedDevice::updateLeds(), Elapsed time since last write (%lld) ms > _latchTime_ms (%d) ms", elapsedTimeMs, _latchTime_ms);
 			retval = write(ledValues);
 			_lastWriteTime = QDateTime::currentDateTime();
 
@@ -325,7 +325,7 @@ int LedDevice::updateLeds(std::vector<ColorRgb> ledValues)
 		else
 		{
 			std::cout << "LedDevice::updateLeds(), Skip write. elapsedTime (" << elapsedTimeMs << ") ms < _latchTime_ms (" << _latchTime_ms << ") ms" << std::endl;
-			Warning(_log, "LedDevice::updateLeds(), Skip write. elapsedTime (%d) ms < _latchTime_ms (%d) ms", elapsedTimeMs, _latchTime_ms);
+			Warning(_log, "LedDevice::updateLeds(), Skip write. elapsedTime (%lld) ms < _latchTime_ms (%d) ms", elapsedTimeMs, _latchTime_ms);
 			assert(_latchTime_ms > 0);
 			if (_isRefreshEnabled)
 			{
