@@ -324,8 +324,9 @@ int LedDevice::updateLeds(std::vector<ColorRgb> ledValues)
 		}
 		else
 		{
-			//std::cout << "LedDevice::updateLeds(), Skip write. elapsedTime (" << elapsedTimeMs << ") ms < _latchTime_ms (" << _latchTime_ms << ") ms" << std::endl;
+			std::cout << "LedDevice::updateLeds(), Skip write. elapsedTime (" << elapsedTimeMs << ") ms < _latchTime_ms (" << _latchTime_ms << ") ms" << std::endl;
 			Warning(_log, "LedDevice::updateLeds(), Skip write. elapsedTime (%d) ms < _latchTime_ms (%d) ms", elapsedTimeMs, _latchTime_ms);
+			assert(_latchTime_ms > 0);
 			if (_isRefreshEnabled)
 			{
 				//Stop timer to allow for next non-refresh update
