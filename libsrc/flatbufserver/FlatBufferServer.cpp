@@ -138,6 +138,7 @@ void FlatBufferServer::startServer()
 	}
 	if (_domain != nullptr && !_domain->isListening())
 	{
+		QLocalServer::removeServer(HYPERION_DOMAIN_SERVER);
 		if (!_domain->listen(HYPERION_DOMAIN_SERVER))
 			Error(_log, "Could not start local domain server 'hyperion'");
 		else
