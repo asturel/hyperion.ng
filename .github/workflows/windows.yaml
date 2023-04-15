@@ -27,7 +27,21 @@ jobs:
           tr -d '\n' < .version > temp && mv temp .version
           echo -n "+PR${{ github.event.pull_request.number }}" >> .version
 
-      - name: Checkout vcpkg
+      - name: Cache vcpkg
+        id: cache-vcpkg
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-vcpkg
+        with:
+          path: vcpkg
+          key: ${{ runner.os }}-build-${{ env.cache-name }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - if: ${{ steps.cache-vcpkg.outputs.cache-hit != 'true' }}
+        name: Checkout vcpkg
         uses: actions/checkout@v3
         with:
           repository: Microsoft/vcpkg
@@ -67,6 +81,17 @@ jobs:
 #        shell: powershell
 #        run: |
 #          choco install --no-progress python -y
+
+      - name: Install Perl
+        shell: powershell
+        run: |
+          choco install --no-progress strawberryperl -y
+          echo "C:\strawberry\c\bin;C:\strawberry\perl\site\bin;C:\strawberry\perl\bin" >> $GITHUB_PATH
+
+      - name: perl -V
+        run: perl -V
+      - name: Install Dependencies
+        run: curl -sL https://git.io/cpm | perl - install -g --show-build-log-on-failure
 
       - name: Install OpenSSL, DirectX SDK
         shell: powershell
