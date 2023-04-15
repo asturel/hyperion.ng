@@ -56,7 +56,7 @@ jobs:
       - name: vcpkg install libftdi
         shell: cmd
         working-directory: vcpkg
-        run: .\vcpkg install libftdi1
+        run: .\vcpkg install --triplet x64-windows libftdi1:x64-windows
 
       - name: vcpkg integrate install
         shell: cmd
