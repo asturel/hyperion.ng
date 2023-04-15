@@ -14,6 +14,7 @@ jobs:
     env:
       VCINSTALLDIR: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC'
       QT_VERSION: 5.15.2
+      VCPKG_DEFAULT_TRIPLET: x64-windows
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -82,16 +83,10 @@ jobs:
 #        run: |
 #          choco install --no-progress python -y
 
-      - name: Install Perl
+      - name: Remove Perl
         shell: powershell
         run: |
-          choco install --no-progress strawberryperl -y
-          echo "C:\strawberry\c\bin;C:\strawberry\perl\site\bin;C:\strawberry\perl\bin" >> $GITHUB_PATH
-
-      - name: perl -V
-        run: perl -V
-      - name: Install Dependencies
-        run: curl -sL https://git.io/cpm | perl - install -g --show-build-log-on-failure
+          Remove-item -Path C:\strawberry -Force -Recurse
 
       - name: Install OpenSSL, DirectX SDK
         shell: powershell
