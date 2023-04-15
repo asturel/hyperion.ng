@@ -20,34 +20,6 @@ jobs:
         with:
           submodules: true
 
-      # Append PR number to .version
-      - name: Append PR number to version
-        shell: bash
-        run: |
-          tr -d '\n' < .version > temp && mv temp .version
-          echo -n "+PR${{ github.event.pull_request.number }}" >> .version
-
-      - name: Checkout vcpkg
-        uses: actions/checkout@v3
-        with:
-          repository: Microsoft/vcpkg
-          path: vcpkg
-          submodules: true
-
-      - name: Set up vcpkg environment
-        shell: cmd
-        run: .\vcpkg\bootstrap-vcpkg.bat
-
-      - name: vcpkg install libftdi
-        shell: cmd
-        working-directory: vcpkg
-        run: .\vcpkg install libftdi1
-
-      - name: vcpkg integrate install
-        shell: cmd
-        working-directory: vcpkg
-        run: .\vcpkg integrate install
-
       - name: Install Qt
         uses: jurplel/install-qt-action@v3
         with:
@@ -67,6 +39,16 @@ jobs:
 #        shell: powershell
 #        run: |
 #          choco install --no-progress python -y
+
+      - name: Install FTDI
+        shell: powershell
+        run: |
+          choco install --no-progress ftdi-drivers -y
+
+      - name: Remove Perl
+        shell: powershell
+        run: |
+          Remove-item -Path C:\strawberry -Force -Recurse
 
       - name: Install OpenSSL, DirectX SDK
         shell: powershell
