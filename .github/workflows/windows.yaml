@@ -56,7 +56,7 @@ jobs:
       - name: vcpkg install libftdi
         shell: cmd
         working-directory: vcpkg
-        run: .\vcpkg install --triplet x64-windows libftdi1:x64-windows
+        run: .\vcpkg install --triplet x64-windows libftdi1:x64-windows-static
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v3
