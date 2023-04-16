@@ -18,7 +18,7 @@ PROJECT(hyperion)
 
 # Parse semantic version of version file and write version to config
 include (${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.cmake)
-INCLUDE (${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake)
+#include (${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake)
 file (STRINGS ".version" HYPERION_VERSION)
 SetVersionNumber(HYPERION ${HYPERION_VERSION})
 set(DEFAULT_JSON_CONFIG_FILE ${CMAKE_CURRENT_SOURCE_DIR}/config/hyperion.config.json.default)

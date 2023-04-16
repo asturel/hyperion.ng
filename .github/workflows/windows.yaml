@@ -58,11 +58,6 @@ jobs:
         working-directory: vcpkg
         run: .\vcpkg install --triplet x64-windows libftdi1:x64-windows
 
-      - name: vcpkg integrate install
-        shell: cmd
-        working-directory: vcpkg
-        run: .\vcpkg integrate install
-
       - name: Install Qt
         uses: jurplel/install-qt-action@v3
         with:
