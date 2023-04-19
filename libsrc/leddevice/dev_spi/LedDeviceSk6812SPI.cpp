@@ -1,5 +1,17 @@
 #include "LedDeviceSk6812SPI.h"
 
+// Constants
+namespace {
+
+// Configuration settings
+const char CONFIG_WHITE_CHANNEL_CALLIBRATION[] = "white_channel_calibration";
+const char CONFIG_WHITE_CHANNEL_LIMIT[] = "white_channel_limit";
+const char CONFIG_WHITE_CHANNEL_RED[] = "white_channel_red";
+const char CONFIG_WHITE_CHANNEL_GREEN[] = "white_channel_green";
+const char CONFIG_WHITE_CHANNEL_BLUE[] = "white_channel_blue";
+
+} //End of constants
+
 LedDeviceSk6812SPI::LedDeviceSk6812SPI(const QJsonObject &deviceConfig)
 	: ProviderSpi(deviceConfig)
 	  , _whiteAlgorithm(RGBW::WhiteAlgorithm::INVALID)
@@ -27,6 +39,15 @@ bool LedDeviceSk6812SPI::init(const QJsonObject &deviceConfig)
 	// Initialise sub-class
 	if ( ProviderSpi::init(deviceConfig) )
 	{
+		_white_channel_calibration  = deviceConfig[CONFIG_WHITE_CHANNEL_CALLIBRATION].toBool(false);
+		double _white_channel_limit_percent = deviceConfig[CONFIG_WHITE_CHANNEL_LIMIT].toDouble(1);
+		_white_channel_limit  = static_cast<uint8_t>(qMin(qRound(_white_channel_limit_percent * 255.0 / 100.0), 255));
+		_white_channel_red  = static_cast<uint8_t>(qMin(deviceConfig[CONFIG_WHITE_CHANNEL_RED].toInt(255), 255));
+		_white_channel_green = static_cast<uint8_t>(qMin(deviceConfig[CONFIG_WHITE_CHANNEL_GREEN].toInt(255), 255));
+		_white_channel_blue = static_cast<uint8_t>(qMin(deviceConfig[CONFIG_WHITE_CHANNEL_BLUE].toInt(255), 255));
+
+		DebugIf(_white_channel_calibration, _log, "White channel limit: %i (%.2f%), red: %i, green: %i, blue: %i", _white_channel_limit, _white_channel_limit_percent, _white_channel_red, _white_channel_green, _white_channel_blue);
+
 		QString whiteAlgorithm = deviceConfig["whiteAlgorithm"].toString("white_off");
 
 		_whiteAlgorithm	= RGBW::stringToWhiteAlgorithm(whiteAlgorithm);
@@ -60,7 +81,14 @@ int LedDeviceSk6812SPI::write(const std::vector<ColorRgb> &ledValues)
 	for (const ColorRgb& color : ledValues)
 	{
 		RGBW::Rgb_to_Rgbw(color, &_temp_rgbw, _whiteAlgorithm);
-		uint32_t colorBits = 
+		// FIXME: lift up
+		if (_white_channel_calibration) {
+			//_temp_rgbw.red   = static_cast<uint8_t>(qMin(qRound(_temp_rgbw.red  / 255.0 * _white_channel_red), 255));
+			//_temp_rgbw.green = static_cast<uint8_t>(qMin(qRound(_temp_rgbw.green / 255.0 * _white_channel_green), 255));
+			//_temp_rgbw.blue  = static_cast<uint8_t>(qMin(qRound(_temp_rgbw.blue / 255.0 * _white_channel_blue), 255));
+			_temp_rgbw.white = static_cast<uint8_t>(qMin(qRound(_white_channel_limit / 255.0 * _temp_rgbw.white), 255));
+		}
+		uint32_t colorBits =
 			((uint32_t)_temp_rgbw.red << 24) +
 			((uint32_t)_temp_rgbw.green << 16) +
 			((uint32_t)_temp_rgbw.blue << 8) +
