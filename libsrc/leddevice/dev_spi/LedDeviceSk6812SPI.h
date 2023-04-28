@@ -51,7 +51,7 @@ private:
 	uint8_t _white_channel_blue;
 
 	const int SPI_BYTES_PER_COLOUR;
-	const int SPI_FRAME_END_LATCH_BYTES;
+	int _spi_frame_end_latch_bytes;
 	uint8_t bitpair_to_byte[4];
 
 	ColorRgbw _temp_rgbw;

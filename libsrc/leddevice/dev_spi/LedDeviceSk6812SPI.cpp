@@ -14,6 +14,7 @@ namespace {
 
 // Configuration settings
 const char CONFIG_WHITE_CHANNEL_CALLIBRATION[] = "white_channel_calibration";
+const char CONFIG_RESET_TIME[] = "resetTime";
 const char CONFIG_WHITE_CHANNEL_LIMIT[] = "white_channel_limit";
 const char CONFIG_WHITE_CHANNEL_RED[] = "white_channel_red";
 const char CONFIG_WHITE_CHANNEL_GREEN[] = "white_channel_green";
@@ -25,7 +26,7 @@ LedDeviceSk6812SPI::LedDeviceSk6812SPI(const QJsonObject &deviceConfig)
 	: ProviderSpi(deviceConfig)
 	  , _whiteAlgorithm(RGBW::WhiteAlgorithm::INVALID)
 	  , SPI_BYTES_PER_COLOUR(4)
-	  , SPI_FRAME_END_LATCH_BYTES(32)
+	  , _spi_frame_end_latch_bytes(32)
 	  , bitpair_to_byte {
 		  0b10001000,
 		  0b10001100,
@@ -55,6 +56,10 @@ bool LedDeviceSk6812SPI::init(const QJsonObject &deviceConfig)
 		_white_channel_red  = static_cast<uint8_t>(qMin(deviceConfig[CONFIG_WHITE_CHANNEL_RED].toInt(255), 255));
 		_white_channel_green = static_cast<uint8_t>(qMin(deviceConfig[CONFIG_WHITE_CHANNEL_GREEN].toInt(255), 255));
 		_white_channel_blue = static_cast<uint8_t>(qMin(deviceConfig[CONFIG_WHITE_CHANNEL_BLUE].toInt(255), 255));
+		int spi_frame_end_latch_bytes = deviceConfig[CONFIG_RESET_TIME].toInt();
+		_spi_frame_end_latch_bytes = qRound(spi_frame_end_latch_bytes * _baudRate_Hz / 1000000.0 / 8.0);
+
+		Debug(_log, "SPI frame end latch time [%d] us, [%d] bytes", spi_frame_end_latch_bytes, _spi_frame_end_latch_bytes);
 
 		DebugIf(_white_channel_calibration, _log, "White channel limit: %i (%.2f%), red: %i, green: %i, blue: %i", _white_channel_limit, _white_channel_limit_percent, _white_channel_red, _white_channel_green, _white_channel_blue);
 
@@ -73,7 +78,7 @@ bool LedDeviceSk6812SPI::init(const QJsonObject &deviceConfig)
 
 			WarningIf(( _baudRate_Hz < 2050000 || _baudRate_Hz > 4000000 ), _log, "SPI rate %d outside recommended range (2050000 -> 4000000)", _baudRate_Hz);
 
-			_ledBuffer.resize(_ledRGBWCount * SPI_BYTES_PER_COLOUR + SPI_FRAME_END_LATCH_BYTES, 0x00);
+			_ledBuffer.resize(_ledRGBWCount * SPI_BYTES_PER_COLOUR + _spi_frame_end_latch_bytes, 0x00);
 
 			isInitOK = true;
 		}
@@ -111,7 +116,7 @@ int LedDeviceSk6812SPI::write(const std::vector<ColorRgb> &ledValues)
 		spi_ptr += SPI_BYTES_PER_LED;
 	}
 
-	for (int j=0; j < SPI_FRAME_END_LATCH_BYTES; j++)
+	for (int j=0; j < _spi_frame_end_latch_bytes; j++)
 	{
 		_ledBuffer[spi_ptr++] = 0;
 	}

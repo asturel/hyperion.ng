@@ -121,6 +121,14 @@
 			"minimum": 0,
 			"access" : "expert",
 			"propertyOrder" : 11
+		},
+		"resetTime": {
+			"type": "integer",
+			"title":"edt_dev_spec_resetTime_title",
+			"default": 80,
+			"append" : "edt_append_us",
+			"access" : "expert",
+			"propertyOrder" : 12
 		}
 	},
 	"additionalProperties": true
