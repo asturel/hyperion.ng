@@ -22,10 +22,10 @@
 		"whiteAlgorithm": {
 			"type": "string",
 			"title":"edt_dev_spec_whiteLedAlgor_title",
-			"enum" : ["auto", "auto_max", "auto_accurate", "subtract_minimum","sub_min_cool_adjust","sub_min_warm_adjust","white_off"],
+			"enum" : ["auto", "auto_max", "auto_accurate", "custom", "custom_accurate", "subtract_minimum","sub_min_cool_adjust","sub_min_warm_adjust","white_off"],
 			"default": "subtract_minimum",
 			"options" : {
-				"enum_titles" : ["edt_dev_enum_auto", "edt_dev_enum_auto_max", "edt_dev_enum_auto_accurate", "edt_dev_enum_subtract_minimum", "edt_dev_enum_sub_min_cool_adjust","edt_dev_enum_sub_min_warm_adjust", "edt_dev_enum_white_off"]
+				"enum_titles" : ["edt_dev_enum_auto", "edt_dev_enum_auto_max", "edt_dev_enum_auto_accurate", "edt_dev_enum_custom", "edt_dev_enum_custom_accurate", "edt_dev_enum_subtract_minimum", "edt_dev_enum_sub_min_cool_adjust","edt_dev_enum_sub_min_warm_adjust", "edt_dev_enum_white_off"]
 			},
 			"propertyOrder" : 4
 		},
@@ -116,7 +116,7 @@
 		"rewriteTime": {
 			"type": "integer",
 			"title":"edt_dev_general_rewriteTime_title",
-			"default": 1000,
+			"default": 0,
 			"append" : "edt_append_ms",
 			"minimum": 0,
 			"access" : "expert",

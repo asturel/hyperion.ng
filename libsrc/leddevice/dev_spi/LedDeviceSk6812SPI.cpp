@@ -13,8 +13,8 @@ Reset time is 80uS = 256 bits = 32 bytes
 namespace {
 
 // Configuration settings
-const char CONFIG_WHITE_CHANNEL_CALLIBRATION[] = "white_channel_calibration";
 const char CONFIG_RESET_TIME[] = "resetTime";
+const char CONFIG_WHITE_CHANNEL_CALLIBRATION[] = "white_channel_calibration";
 const char CONFIG_WHITE_CHANNEL_LIMIT[] = "white_channel_limit";
 const char CONFIG_WHITE_CHANNEL_RED[] = "white_channel_red";
 const char CONFIG_WHITE_CHANNEL_GREEN[] = "white_channel_green";
@@ -27,6 +27,7 @@ LedDeviceSk6812SPI::LedDeviceSk6812SPI(const QJsonObject &deviceConfig)
 	  , _whiteAlgorithm(RGBW::WhiteAlgorithm::INVALID)
 	  , SPI_BYTES_PER_COLOUR(4)
 	  , _spi_frame_end_latch_bytes(32)
+	  , _white_calibration(RGBW::WhiteCalibration::Default)
 	  , bitpair_to_byte {
 		  0b10001000,
 		  0b10001100,
@@ -51,17 +52,19 @@ bool LedDeviceSk6812SPI::init(const QJsonObject &deviceConfig)
 	if ( ProviderSpi::init(deviceConfig) )
 	{
 		_white_channel_calibration  = deviceConfig[CONFIG_WHITE_CHANNEL_CALLIBRATION].toBool(false);
-		double _white_channel_limit_percent = deviceConfig[CONFIG_WHITE_CHANNEL_LIMIT].toDouble(1);
-		_white_channel_limit  = static_cast<uint8_t>(qMin(qRound(_white_channel_limit_percent * 255.0 / 100.0), 255));
-		_white_channel_red  = static_cast<uint8_t>(qMin(deviceConfig[CONFIG_WHITE_CHANNEL_RED].toInt(255), 255));
-		_white_channel_green = static_cast<uint8_t>(qMin(deviceConfig[CONFIG_WHITE_CHANNEL_GREEN].toInt(255), 255));
-		_white_channel_blue = static_cast<uint8_t>(qMin(deviceConfig[CONFIG_WHITE_CHANNEL_BLUE].toInt(255), 255));
+		double white_channel_limit_percent = deviceConfig[CONFIG_WHITE_CHANNEL_LIMIT].toDouble(1);
+		uint8_t white_channel_limit  = static_cast<uint8_t>(qMin(qRound(white_channel_limit_percent * 255.0 / 100.0), 255));
+		uint8_t white_channel_red  = static_cast<uint8_t>(qMin(deviceConfig[CONFIG_WHITE_CHANNEL_RED].toInt(255), 255));
+		uint8_t white_channel_green = static_cast<uint8_t>(qMin(deviceConfig[CONFIG_WHITE_CHANNEL_GREEN].toInt(255), 255));
+		uint8_t white_channel_blue = static_cast<uint8_t>(qMin(deviceConfig[CONFIG_WHITE_CHANNEL_BLUE].toInt(255), 255));
+		_white_calibration = RGBW::WhiteCalibration{_white_channel_calibration, white_channel_red, white_channel_green, white_channel_blue, white_channel_limit};
+
 		int spi_frame_end_latch_bytes = deviceConfig[CONFIG_RESET_TIME].toInt();
 		_spi_frame_end_latch_bytes = qRound(spi_frame_end_latch_bytes * _baudRate_Hz / 1000000.0 / 8.0);
 
 		Debug(_log, "SPI frame end latch time [%d] us, [%d] bytes", spi_frame_end_latch_bytes, _spi_frame_end_latch_bytes);
 
-		DebugIf(_white_channel_calibration, _log, "White channel limit: %i (%.2f%), red: %i, green: %i, blue: %i", _white_channel_limit, _white_channel_limit_percent, _white_channel_red, _white_channel_green, _white_channel_blue);
+		DebugIf(_white_channel_calibration, _log, "White channel limit: %i (%.2f%), red: %i, green: %i, blue: %i", white_channel_limit, white_channel_limit_percent, white_channel_red, white_channel_green, white_channel_blue);
 
 		QString whiteAlgorithm = deviceConfig["whiteAlgorithm"].toString("white_off");
 
@@ -94,14 +97,7 @@ int LedDeviceSk6812SPI::write(const std::vector<ColorRgb> &ledValues)
 
 	for (const ColorRgb& color : ledValues)
 	{
-		RGBW::Rgb_to_Rgbw(color, &_temp_rgbw, _whiteAlgorithm);
-		// FIXME: lift up
-		if (_white_channel_calibration) {
-			//_temp_rgbw.red   = static_cast<uint8_t>(qMin(qRound(_temp_rgbw.red  / 255.0 * _white_channel_red), 255));
-			//_temp_rgbw.green = static_cast<uint8_t>(qMin(qRound(_temp_rgbw.green / 255.0 * _white_channel_green), 255));
-			//_temp_rgbw.blue  = static_cast<uint8_t>(qMin(qRound(_temp_rgbw.blue / 255.0 * _white_channel_blue), 255));
-			_temp_rgbw.white = static_cast<uint8_t>(qMin(qRound(_white_channel_limit / 255.0 * _temp_rgbw.white), 255));
-		}
+		RGBW::Rgb_to_Rgbw(color, &_temp_rgbw, _whiteAlgorithm, &_white_calibration);
 		uint32_t colorBits =
 			((uint32_t)_temp_rgbw.red << 24) +
 			((uint32_t)_temp_rgbw.green << 16) +

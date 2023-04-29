@@ -573,6 +573,8 @@
     "edt_dev_enum_auto": "Auto",
     "edt_dev_enum_auto_max": "Auto max",
     "edt_dev_enum_auto_accurate": "Auto accurate",
+    "edt_dev_enum_custom": "Custom",
+    "edt_dev_enum_custom_accurate": "Custom accurate (substract w)",
     "edt_dev_enum_white_off": "White off",
     "edt_dev_general_autostart_title": "Autostart",
     "edt_dev_general_autostart_title_info": "The LED device is switched-on during startup or not",

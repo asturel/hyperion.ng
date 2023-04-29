@@ -44,11 +44,8 @@ private:
 	int write(const std::vector<ColorRgb> & ledValues) override;
 
 	RGBW::WhiteAlgorithm _whiteAlgorithm;
+	RGBW::WhiteCalibration _white_calibration;
 	bool _white_channel_calibration;
-	uint8_t _white_channel_limit;
-	uint8_t _white_channel_red;
-	uint8_t _white_channel_green;
-	uint8_t _white_channel_blue;
 
 	const int SPI_BYTES_PER_COLOUR;
 	int _spi_frame_end_latch_bytes;
