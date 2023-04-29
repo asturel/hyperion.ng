@@ -156,6 +156,7 @@ jobs:
           cp ${TOOLCHAIN_DIR}/arm-webos-linux-gnueabi/sysroot/usr/lib/qt/plugins/imageformats/libqico.so ./release/imageformats/
           cp ${TOOLCHAIN_DIR}/arm-webos-linux-gnueabi/sysroot/usr/lib/qt/plugins/imageformats/libqjpeg.so ./release/imageformats/
           cp -r ${TOOLCHAIN_DIR}/arm-webos-linux-gnueabi/sysroot/usr/lib/python3.10 ./release/python/lib/
+          cp ${GITHUB_WORKSPACE}/hyperion.ng/${BUILD_DIR_NATIVE}/flatc_export.cmake ./release/
           find ./release
 
       - name: Upload artifacts
