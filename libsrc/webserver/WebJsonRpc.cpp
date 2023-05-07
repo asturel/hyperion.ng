@@ -40,6 +40,7 @@ void WebJsonRpc::handleCallback(QJsonObject obj)
 	QtHttpReply reply(_server);
 	QJsonDocument doc(obj);
 	reply.addHeader ("Content-Type", "application/json");
+	reply.addHeader ("Access-Control-Allow-Origin", "*");
 	reply.appendRawData (doc.toJson());
 	_wrapper->sendToClientWithReply(&reply);
 }
