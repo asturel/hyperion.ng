@@ -113,7 +113,6 @@ int ProviderRs232::close()
 			Debug(_log,"Flush was successful");
 		}
 
-		disconnect(&_rs232Port, &QSerialPort::readyRead, this, &ProviderRs232::readFeedback);
 		if (_espHandshake)
 		{
 			QTimer::singleShot(200, this, [this]() { if (_rs232Port.isOpen()) EspTools::goingSleep(_rs232Port); });
@@ -124,6 +123,7 @@ int ProviderRs232::close()
 				_rs232Port.waitForReadyRead(100);
 			}
 		}
+		disconnect(&_rs232Port, &QSerialPort::readyRead, this, &ProviderRs232::readFeedback);
 
 		Debug(_log,"Close UART: %s", QSTRING_CSTR(_deviceName) );
 		_rs232Port.close();
