@@ -54,7 +54,9 @@ class EspTools
 
 			_rs232Port.setDataTerminalReady(true);
 			_rs232Port.setRequestToSend(true);
+			wait(150);
 			_rs232Port.setRequestToSend(false);
+			wait(100);
 		}
 		else if (serialPortInfo.productIdentifier() == 0x80c2 && serialPortInfo.vendorIdentifier() == 0x303a)
 		{
