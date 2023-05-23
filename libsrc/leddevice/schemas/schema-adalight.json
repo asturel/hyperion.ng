@@ -144,7 +144,13 @@
 			"minimum": 0,
 			"access" : "expert",
 			"propertyOrder" : 12
-		}		
+		},
+		"espHandshake": {
+			"type": "boolean",
+			"title": "edt_dev_spec_espHandshake_title",
+			"default": false,
+			"propertyOrder" : 13
+		}
 	},
 	"additionalProperties": true
 }

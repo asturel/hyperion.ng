@@ -32,7 +32,7 @@ public:
 	/// Following parameters are required
 	/// @code
 	/// {
-	///     "deviceConfig"  : 
+	///     "deviceConfig"  :
 	/// }
 	///@endcode
 	///
@@ -146,6 +146,8 @@ private:
 
 	/// Frames dropped, as write failed
 	int _frameDropCounter;
+
+	bool _espHandshake;
 };
 
 #endif // PROVIDERRS232_H
