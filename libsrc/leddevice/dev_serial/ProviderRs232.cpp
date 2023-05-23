@@ -2,6 +2,7 @@
 // LedDevice includes
 #include <leddevice/LedDevice.h>
 #include "ProviderRs232.h"
+#include "EspTools.h"
 #include <utils/WaitTime.h>
 
 // qt includes
@@ -34,6 +35,7 @@ ProviderRs232::ProviderRs232(const QJsonObject &deviceConfig)
 	  ,_isAutoDeviceName(false)
 	  ,_delayAfterConnect_ms(0)
 	  ,_frameDropCounter(0)
+	  ,_espHandshake(false)
 {
 }
 
@@ -62,12 +64,14 @@ bool ProviderRs232::init(const QJsonObject &deviceConfig)
 
 		_baudRate_Hz = deviceConfig["rate"].toInt();
 		_delayAfterConnect_ms = deviceConfig["delayAfterConnect"].toInt(1500);
+		_espHandshake = deviceConfig["espHandshake"].toBool(false);
 
 		Debug(_log, "DeviceName   : %s", QSTRING_CSTR(_deviceName));
 		DebugIf(!_location.isEmpty(), _log, "Location     : %s", QSTRING_CSTR(_location));
 		Debug(_log, "AutoDevice   : %d", _isAutoDeviceName);
 		Debug(_log, "baudRate_Hz  : %d", _baudRate_Hz);
 		Debug(_log, "delayAfCon ms: %d", _delayAfterConnect_ms);
+		Debug(_log, "ESP handshake: %s", (_espHandshake ? "ON" : "OFF"));
 
 		isInitOK = true;
 	}
@@ -109,6 +113,16 @@ int ProviderRs232::close()
 			Debug(_log,"Flush was successful");
 		}
 
+		if (_espHandshake)
+		{
+			QTimer::singleShot(200, this, [this]() { if (_rs232Port.isOpen()) EspTools::goingSleep(_rs232Port); });
+			EspTools::goingSleep(_rs232Port);
+
+			for (int i = 0; i < 6 && _rs232Port.isOpen(); i++)
+			{
+				_rs232Port.waitForReadyRead(100);
+			}
+		}
 		disconnect(&_rs232Port, &QSerialPort::readyRead, this, &ProviderRs232::readFeedback);
 
 		Debug(_log,"Close UART: %s", QSTRING_CSTR(_deviceName) );
@@ -181,6 +195,11 @@ bool ProviderRs232::tryOpen(int delayAfterConnect_ms)
 			{
 				this->setInError(_rs232Port.errorString());
 				return false;
+			}
+
+			if (_espHandshake)
+			{
+				EspTools::initializeEsp(_rs232Port, serialPortInfo, _log);
 			}
 		}
 		else

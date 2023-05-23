@@ -594,6 +594,7 @@
     "edt_dev_spec_FCledToOn_title": "Fadecandy LED set to on",
     "edt_dev_spec_FCmanualControl_title": "Manual control of fadecandy LED",
     "edt_dev_spec_FCsetConfig_title": "Set fadecandy configuration",
+    "edt_dev_spec_espHandshake_title": "ESP/RP2040 handsake",
     "edt_dev_spec_LBap102Mode_title": "LightBerry APA102 Mode",
     "edt_dev_spec_PBFiFo_title": "Pi-Blaster FiFo",
     "edt_dev_spec_baudrate_title": "Baudrate",

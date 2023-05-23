@@ -193,7 +193,7 @@ void LedDeviceAdalight::readFeedback()
 		while ( _rs232Port.canReadLine() )
 		{
 			QByteArray record = _rs232Port.readLine();
-			if (record.startsWith("FPS:"))
+			if (record.startsWith("FPS:") || record.startsWith("HyperHDR frames:"))
 			{
 				if (continuousLines)
 				{
